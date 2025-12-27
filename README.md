@@ -1,120 +1,170 @@
-# ChatGPT Clone with XLSX Integration
+# ChatGPT Clone с XLSX интеграцией
 
-A simplified ChatGPT-like interface built with Next.js 15, Vercel AI SDK, and SQLite persistence. Features threaded conversations, generative UI tools, and spreadsheet manipulation capabilities.
+Упрощённый аналог интерфейса ChatGPT с тредами, хранением сообщений в базе данных и генеративным UI на основе Vercel AI SDK.
 
-## Features
+![Главный интерфейс](docs/screenshot.png)
 
-- **Threaded Conversations**: Create, switch, and delete chat threads with persistent storage
-- **AI-Powered Chat**: Streaming responses using Vercel AI SDK with GPT-4o-mini
-- **Generative UI Tools**: 
-  - `getRange` - Read spreadsheet data with table visualization
-  - `updateCell` - Update cells with confirmation UI
-  - `readCell` - Read single cells and formulas
-  - `deleteThread` - Delete threads with confirmation
-- **XLSX Integration**:
-  - Interactive table modal with drag-to-select cells
-  - Cell range references (`@Sheet1!A1:B5`) in messages
-  - Auto-generated sample spreadsheet
-- **Confirmation Flow**: Dangerous actions (update/delete) require user confirmation
+## 🚀 Демо
 
-## Tech Stack
+**Live:** [testproject-gilt-beta.vercel.app](https://testproject-gilt-beta.vercel.app)
 
-- **Framework**: Next.js 15 (App Router)
-- **Language**: TypeScript
-- **AI**: Vercel AI SDK + OpenAI GPT-4o-mini
-- **Database**: SQLite via better-sqlite3
-- **Styling**: Tailwind CSS
-- **Spreadsheets**: xlsx library
+---
 
-## Getting Started
+## ✅ Реализованный функционал
 
-### Prerequisites
+### 1. Чат с тредами
+- ✅ Список тредов в боковой панели
+- ✅ Создание нового треда
+- ✅ Переключение между тредами
+- ✅ Удаление тредов (с подтверждением)
+- ✅ Загрузка истории сообщений из БД
 
-- Node.js 18+ or Bun 1.3+
-- OpenAI API key
+### 2. Персистентность (SQLite)
+- ✅ Таблица `threads` (id, title, created_at, updated_at)
+- ✅ Таблица `messages` (id, thread_id, role, content, tool_calls, created_at)
+- ✅ Автоматическая миграция при первом запуске
 
-### Installation
+### 3. Generative UI / Tools
+- ✅ `getRange` — чтение диапазона ячеек из XLSX
+- ✅ `readCell` — чтение одной ячейки (включая формулы)
+- ✅ `updateCell` — запись в ячейку с подтверждением
+- ✅ `deleteThread` — удаление треда с подтверждением
 
-```bash
-# Install dependencies
-npm install
+### 4. Подтверждение опасных действий
+- ✅ UI-карточка с кнопками "Да" / "Нет"
+- ✅ Действие выполняется только после подтверждения
 
-# Create .env.local with your OpenAI API key
-echo "OPENAI_API_KEY=your-key-here" > .env.local
-```
+### 5. Работа с XLSX
+- ✅ Захардкоженный файл `/data/example.xlsx`
+- ✅ Визуальное представление таблицы в чате
+- ✅ Модальное окно с полной таблицей
+- ✅ Выделение ячеек мышкой
+- ✅ Вставка меншонов диапазонов (`@Sheet1!A1:B5`)
 
-### Running the App
+---
 
-```bash
-# Development
-npm run dev
+## 🛠 Технологический стек
 
-# Production build
-npm run build
-npm start
-```
+| Компонент | Версия | Назначение |
+|-----------|--------|------------|
+| Next.js | 16.1.1 | App Router, TypeScript |
+| AI SDK | 4.x | useChat, streamText, tools |
+| @ai-sdk/openai | 1.x | OpenAI провайдер |
+| better-sqlite3 | latest | SQLite для хранения |
+| xlsx | latest | Работа с таблицами |
+| Tailwind CSS | 4.x | Стилизация |
+| zod | 3.x | Валидация параметров tools |
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+---
 
-## Project Structure
+## 📁 Структура проекта
 
 ```
 app/
 ├── api/
-│   ├── chat/route.ts       # Chat streaming endpoint with tools
-│   └── threads/route.ts    # Thread CRUD endpoints
+│   ├── chat/route.ts        # Стриминг ответов AI + tools
+│   └── threads/route.ts     # CRUD для тредов
 ├── components/
-│   ├── chat/ChatArea.tsx   # Main chat with useChat hook
+│   ├── chat/ChatArea.tsx    # useChat + отображение сообщений
 │   ├── threads/ThreadList.tsx
-│   └── xlsx/TableModal.tsx # Cell selection modal
+│   └── xlsx/TableModal.tsx  # Модалка с выбором ячеек
 ├── lib/
-│   ├── db/index.ts         # SQLite operations
-│   ├── xlsx/index.ts       # Spreadsheet utilities
-│   └── tools/definitions.ts
+│   ├── db/index.ts          # SQLite операции
+│   ├── xlsx/index.ts        # Чтение/запись XLSX
+│   └── tools/definitions.ts # Zod-схемы для tools
 ├── types/index.ts
-├── layout.tsx
-└── page.tsx
+├── page.tsx
+└── layout.tsx
 data/
-├── chat.db                 # SQLite database (auto-created)
-└── example.xlsx            # Sample spreadsheet (auto-created)
+├── chat.db                  # SQLite база (создаётся автоматически)
+└── example.xlsx             # XLSX файл (создаётся автоматически)
 ```
 
-## Usage Examples
+---
 
-1. **Read spreadsheet data**: "Show me the data in Sheet1 from A1 to D7"
-2. **Update a cell**: "Update cell C3 to 2500" (requires confirmation)
-3. **Read formulas**: "What formula is in cell D4?"
-4. **Use cell references**: After clicking a table, select cells and insert reference like `@Sheet1!B2:B5`
+## 🚀 Запуск проекта
 
-## Database
+### Установка зависимостей
+```bash
+npm install
+```
 
-SQLite database is auto-initialized at `data/chat.db` with tables:
-- `threads`: id, title, created_at, updated_at
-- `messages`: id, thread_id, role, content, tool_calls, created_at
+### Настройка OpenAI ключа
+```bash
+echo "OPENAI_API_KEY=ваш-ключ" > .env.local
+```
 
-## Limitations
+### Запуск development сервера
+```bash
+npm run dev
+```
 
-- Uses npm instead of Bun (Bun install had network issues)
-- Single XLSX file at `data/example.xlsx`
-- No authentication
-- No real email sending (logged only)
+Откройте [http://localhost:3000](http://localhost:3000)
 
-## What's Implemented
+### Production сборка
+```bash
+npm run build
+npm start
+```
 
-✅ Thread management (create, switch, delete)  
-✅ Chat with streaming AI responses  
-✅ Message persistence in SQLite  
-✅ Generative UI tools with Zod schemas  
-✅ Confirmation flow for dangerous actions  
-✅ XLSX reading with table visualization  
-✅ XLSX writing with confirmation  
-✅ Cell selection modal  
-✅ Range reference insertion  
-✅ Dark mode UI  
+---
 
-## Future Improvements
+## 🧪 Проведённые тесты
 
-- E2E tests with Playwright
-- Multiple file support
-- Real-time collaboration
-- Export conversations
+### Build тест
+```
+✓ Compiled successfully (3.1s)
+✓ TypeScript типы корректны
+✓ Статические страницы сгенерированы
+```
+
+### UI тесты (без API ключа)
+| Тест | Результат |
+|------|-----------|
+| Создание нового треда | ✅ Работает |
+| Переключение между тредами | ✅ Работает |
+| Удаление треда | ✅ Работает |
+| Модальное окно таблицы | ✅ Открывается |
+| Выделение ячеек | ✅ Работает |
+| Вставка @Sheet1!A1:B5 | ✅ Работает |
+| Персистентность в SQLite | ✅ Данные сохраняются |
+
+### Функции, требующие API ключ
+- Стриминг ответов от AI
+- Вызов tools (getRange, updateCell)
+- Подтверждение действий
+
+---
+
+## 📝 Примеры использования
+
+После добавления OpenAI ключа:
+
+1. **Чтение данных таблицы:**
+   > "Покажи данные из Sheet1 с A1 по D7"
+
+2. **Обновление ячейки:**
+   > "Измени ячейку C3 на 2500"
+   > *(появится подтверждение "Да/Нет")*
+
+3. **Чтение формулы:**
+   > "Какая формула в ячейке D4?"
+
+4. **Меншоны диапазонов:**
+   > Кликните на таблицу → выделите ячейки → "Вставить ссылку"
+   > Получите: `@Sheet1!B2:B5`
+
+---
+
+## ⚠️ Ограничения
+
+- Используется npm вместо Bun (проблемы с установкой)
+- На Vercel SQLite сбрасывается при каждом деплое
+- Один XLSX файл (`/data/example.xlsx`)
+- Нет аутентификации (не требовалось в ТЗ)
+
+---
+
+## 📄 Лицензия
+
+MIT
