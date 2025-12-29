@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import ChatArea from '@/app/components/chat/ChatArea';
 import ThreadList from '@/app/components/threads/ThreadList';
@@ -18,7 +18,7 @@ export default function Home() {
     range: string;
   } | null>(null);
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
-  const chatInputRef = useRef<HTMLInputElement>(null);
+  const insertReferenceCallbackRef = useRef<((ref: string) => void) | null>(null);
 
   // Load threads on mount
   useEffect(() => {
@@ -104,17 +104,16 @@ export default function Home() {
   };
 
   const handleInsertReference = (reference: string) => {
-    // Insert reference at cursor position in chat input
-    if (chatInputRef.current) {
-      const input = chatInputRef.current;
-      const start = input.selectionStart || 0;
-      const end = input.selectionEnd || 0;
-      const value = input.value;
-      input.value = value.slice(0, start) + reference + ' ' + value.slice(end);
-      input.focus();
-      input.setSelectionRange(start + reference.length + 1, start + reference.length + 1);
+    // Call the registered callback from ChatArea
+    if (insertReferenceCallbackRef.current) {
+      insertReferenceCallbackRef.current(reference);
+      setIsTableModalOpen(false);
     }
   };
+
+  const handleRegisterInsertCallback = useCallback((callback: (ref: string) => void) => {
+    insertReferenceCallbackRef.current = callback;
+  }, []);
 
   // If no active thread, create one automatically
   useEffect(() => {
@@ -156,6 +155,7 @@ export default function Home() {
               threadId={activeThreadId}
               initialMessages={messages}
               onTableClick={handleTableClick}
+              onRequestInsertReference={handleRegisterInsertCallback}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-zinc-400">

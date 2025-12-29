@@ -8,6 +8,7 @@ interface ChatAreaProps {
     threadId: string;
     initialMessages?: DBMessage[];
     onTableClick?: (range: string, data: unknown) => void;
+    onRequestInsertReference?: (callback: (ref: string) => void) => void;
 }
 
 interface PendingConfirmation {
@@ -20,9 +21,11 @@ interface PendingConfirmation {
     threadId?: string;
 }
 
-export default function ChatArea({ threadId, initialMessages = [], onTableClick }: ChatAreaProps) {
+export default function ChatArea({ threadId, initialMessages = [], onTableClick, onRequestInsertReference }: ChatAreaProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+    const [handledConfirmations, setHandledConfirmations] = useState<Set<string>>(new Set());
+    const [inputValue, setInputValue] = useState('');
 
     // Convert DB messages to AI SDK format
     const convertedMessages = initialMessages.map(msg => ({
@@ -31,12 +34,26 @@ export default function ChatArea({ threadId, initialMessages = [], onTableClick 
         content: msg.content,
     }));
 
-    const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
+    const { messages, input, setInput, handleInputChange, handleSubmit, isLoading, append } = useChat({
         api: '/api/chat',
         body: { threadId },
         initialMessages: convertedMessages,
         maxSteps: 10,
     });
+
+    // Sync local inputValue with useChat input
+    useEffect(() => {
+        setInputValue(input);
+    }, [input]);
+
+    // Register the insert reference callback
+    useEffect(() => {
+        if (onRequestInsertReference) {
+            onRequestInsertReference((ref: string) => {
+                setInput((prev) => prev + ' ' + ref + ' ');
+            });
+        }
+    }, [onRequestInsertReference, setInput]);
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,6 +71,9 @@ export default function ChatArea({ threadId, initialMessages = [], onTableClick 
             if (message.toolInvocations) {
                 for (const tool of message.toolInvocations) {
                     if (tool.state === 'result') {
+                        // Skip if we already handled this confirmation
+                        if (handledConfirmations.has(tool.toolCallId)) continue;
+
                         const result = tool.result as {
                             requiresConfirmation?: boolean;
                             description?: string;
@@ -76,10 +96,13 @@ export default function ChatArea({ threadId, initialMessages = [], onTableClick 
                 }
             }
         }
-    }, [messages, pendingConfirmation]);
+    }, [messages, pendingConfirmation, handledConfirmations]);
 
     const handleConfirm = async (confirmed: boolean) => {
         if (!pendingConfirmation) return;
+
+        // Mark this confirmation as handled
+        setHandledConfirmations(prev => new Set(prev).add(pendingConfirmation.toolCallId));
 
         if (confirmed) {
             // Send a message confirming the action - AI will re-call the tool with confirmed=true
