@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import type { TableData, RangeReference, CellData } from '@/app/types';
 
-const XLSX_PATH = path.join(process.cwd(), 'data', 'example.xlsx');
+const XLSX_PATH = path.join(process.cwd(), 'public', 'example.xlsx');
 
 // Ensure the XLSX file exists with sample data
 function ensureXlsxExists(): void {
@@ -15,15 +15,15 @@ function ensureXlsxExists(): void {
 function createSampleXlsx(): void {
     const wb = XLSX.utils.book_new();
 
-    // Sample data with names, emails, amounts, and formulas
+    // Sample data with names, emails, amounts, and bonus (calculated values)
     const data = [
         ['Name', 'Email', 'Amount', 'Bonus'],
-        ['Alice Smith', 'alice@example.com', 1500, { f: 'C2*0.1' }],
-        ['Bob Johnson', 'bob@example.com', 2200, { f: 'C3*0.1' }],
-        ['Carol White', 'carol@example.com', 1800, { f: 'C4*0.1' }],
-        ['David Brown', 'david@example.com', 3000, { f: 'C5*0.1' }],
-        ['Eve Davis', 'eve@example.com', 2500, { f: 'C6*0.1' }],
-        ['Total', '', { f: 'SUM(C2:C6)' }, { f: 'SUM(D2:D6)' }],
+        ['Alice Smith', 'alice@example.com', 1500, 150],
+        ['Bob Johnson', 'bob@example.com', 2200, 220],
+        ['Carol White', 'carol@example.com', 1800, 180],
+        ['David Brown', 'david@example.com', 3000, 300],
+        ['Eve Davis', 'eve@example.com', 2500, 250],
+        ['Total', '', 11000, 1100],
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(data);
@@ -74,7 +74,9 @@ function colToLetter(col: number): string {
 // Get workbook
 function getWorkbook(): XLSX.WorkBook {
     ensureXlsxExists();
-    return XLSX.readFile(XLSX_PATH);
+    // Use fs.readFileSync with Buffer for Next.js compatibility
+    const buffer = fs.readFileSync(XLSX_PATH);
+    return XLSX.read(buffer, { type: 'buffer' });
 }
 
 // Get sheet names
@@ -166,7 +168,9 @@ export function writeCell(sheet: string, cell: string, value: string | number): 
     range.e.c = Math.max(range.e.c, ref.col);
     ws['!ref'] = XLSX.utils.encode_range(range);
 
-    XLSX.writeFile(wb, XLSX_PATH);
+    // Use Buffer approach for Next.js compatibility
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    fs.writeFileSync(XLSX_PATH, buffer);
 }
 
 // Parse a mention like "@Sheet1!A1:B5" or "@Sheet1!D4"
