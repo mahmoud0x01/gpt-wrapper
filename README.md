@@ -4,10 +4,6 @@
 
 ![Главный интерфейс](docs/screenshot.png)
 
-## 🚀 Демо
-
-**Live:** [testproject-gilt-beta.vercel.app](https://testproject-gilt-beta.vercel.app)
-
 ---
 
 ## ✅ Реализованный функционал
