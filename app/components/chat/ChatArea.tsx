@@ -26,11 +26,11 @@ export default function ChatArea({ threadId, initialMessages = [], onTableClick 
         content: msg.content,
     }));
 
-    const { messages, input, handleInputChange, handleSubmit, isLoading, addToolResult } = useChat({
+    const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
         api: '/api/chat',
         body: { threadId },
         initialMessages: convertedMessages,
-        maxSteps: 5,
+        maxSteps: 10,
     });
 
     const scrollToBottom = useCallback(() => {
@@ -44,13 +44,21 @@ export default function ChatArea({ threadId, initialMessages = [], onTableClick 
     const handleConfirm = async (confirmed: boolean) => {
         if (!pendingConfirmation) return;
 
-        // Add tool result with user's decision
-        addToolResult({
-            toolCallId: pendingConfirmation.toolCallId,
-            result: confirmed
-                ? { confirmed: true, proceed: true }
-                : { confirmed: false, cancelled: true, message: 'User cancelled the action' },
-        });
+        if (confirmed) {
+            // Send a message confirming the action - AI will re-call the tool with confirmed=true
+            const data = pendingConfirmation.data as { sheet?: string; cell?: string; value?: unknown; threadId?: string };
+            if (data.sheet && data.cell) {
+                append({
+                    role: 'user',
+                    content: `Yes, please update cell ${data.sheet}!${data.cell} to ${data.value}. confirmed=true`,
+                });
+            } else if (data.threadId) {
+                append({
+                    role: 'user',
+                    content: `Yes, please delete the thread. confirmed=true`,
+                });
+            }
+        }
 
         setPendingConfirmation(null);
     };
@@ -146,8 +154,8 @@ export default function ChatArea({ threadId, initialMessages = [], onTableClick 
                     >
                         <div
                             className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.role === 'user'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
                                 }`}
                         >
                             {renderMessageContent(message)}
