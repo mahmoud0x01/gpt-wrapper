@@ -10,14 +10,19 @@ interface ChatAreaProps {
     onTableClick?: (range: string, data: unknown) => void;
 }
 
+interface PendingConfirmation {
+    toolCallId: string;
+    action: string;
+    description: string;
+    sheet?: string;
+    cell?: string;
+    value?: unknown;
+    threadId?: string;
+}
+
 export default function ChatArea({ threadId, initialMessages = [], onTableClick }: ChatAreaProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const [pendingConfirmation, setPendingConfirmation] = useState<{
-        toolCallId: string;
-        action: string;
-        description: string;
-        data: Record<string, unknown>;
-    } | null>(null);
+    const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
 
     // Convert DB messages to AI SDK format
     const convertedMessages = initialMessages.map(msg => ({
@@ -41,21 +46,52 @@ export default function ChatArea({ threadId, initialMessages = [], onTableClick 
         scrollToBottom();
     }, [messages, scrollToBottom]);
 
+    // Detect confirmation-requiring tool results via useEffect
+    useEffect(() => {
+        if (pendingConfirmation) return; // Already have one pending
+
+        for (const message of messages) {
+            if (message.toolInvocations) {
+                for (const tool of message.toolInvocations) {
+                    if (tool.state === 'result') {
+                        const result = tool.result as {
+                            requiresConfirmation?: boolean;
+                            description?: string;
+                            action?: string;
+                            data?: { sheet?: string; cell?: string; value?: unknown; threadId?: string };
+                        };
+                        if (result.requiresConfirmation) {
+                            setPendingConfirmation({
+                                toolCallId: tool.toolCallId,
+                                action: result.action || 'action',
+                                description: result.description || 'Confirm this action?',
+                                sheet: result.data?.sheet,
+                                cell: result.data?.cell,
+                                value: result.data?.value,
+                                threadId: result.data?.threadId,
+                            });
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }, [messages, pendingConfirmation]);
+
     const handleConfirm = async (confirmed: boolean) => {
         if (!pendingConfirmation) return;
 
         if (confirmed) {
             // Send a message confirming the action - AI will re-call the tool with confirmed=true
-            const data = pendingConfirmation.data as { sheet?: string; cell?: string; value?: unknown; threadId?: string };
-            if (data.sheet && data.cell) {
+            if (pendingConfirmation.sheet && pendingConfirmation.cell) {
                 append({
                     role: 'user',
-                    content: `Yes, please update cell ${data.sheet}!${data.cell} to ${data.value}. confirmed=true`,
+                    content: `Yes, confirmed. Update cell ${pendingConfirmation.sheet}!${pendingConfirmation.cell} to ${pendingConfirmation.value}`,
                 });
-            } else if (data.threadId) {
+            } else if (pendingConfirmation.threadId) {
                 append({
                     role: 'user',
-                    content: `Yes, please delete the thread. confirmed=true`,
+                    content: `Yes, confirmed. Delete the thread.`,
                 });
             }
         }
@@ -106,20 +142,25 @@ export default function ChatArea({ threadId, initialMessages = [], onTableClick 
                     {message.content && <p className="whitespace-pre-wrap">{message.content}</p>}
                     {message.toolInvocations.map((tool, i) => {
                         if (tool.state === 'result') {
-                            const result = tool.result as { data?: { headers: string[]; rows: unknown[][]; range: string }; requiresConfirmation?: boolean; description?: string; action?: string };
+                            const result = tool.result as {
+                                data?: { headers: string[]; rows: unknown[][]; range: string };
+                                requiresConfirmation?: boolean;
+                                success?: boolean;
+                                message?: string;
+                            };
+
+                            // Render table if data exists
                             if (result.data?.headers) {
                                 return <div key={i}>{renderTableData(result.data)}</div>;
                             }
-                            if (result.requiresConfirmation && !pendingConfirmation) {
-                                // Set pending confirmation
-                                setTimeout(() => {
-                                    setPendingConfirmation({
-                                        toolCallId: tool.toolCallId,
-                                        action: result.action || 'action',
-                                        description: result.description || 'Confirm this action?',
-                                        data: result as unknown as Record<string, unknown>,
-                                    });
-                                }, 0);
+
+                            // Show success message
+                            if (result.success && result.message) {
+                                return (
+                                    <div key={i} className="text-green-600 dark:text-green-400 text-sm">
+                                        ✅ {result.message}
+                                    </div>
+                                );
                             }
                         }
                         return null;
@@ -154,8 +195,8 @@ export default function ChatArea({ threadId, initialMessages = [], onTableClick 
                     >
                         <div
                             className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.role === 'user'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
                                 }`}
                         >
                             {renderMessageContent(message)}
