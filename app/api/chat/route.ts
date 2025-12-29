@@ -39,8 +39,7 @@ When the user mentions ranges like @Sheet1!A1:B5, use the getRange tool to read 
 When asked to update cells, ALWAYS use the updateCell tool with confirmed=false first to trigger user confirmation.
 When asked to delete threads, use the deleteThread tool with confirmed=false first.
 
-After reading spreadsheet data, display it nicely formatted for the user.
-If a user selects cells or mentions a range, help them understand or manipulate that data.`,
+IMPORTANT: When you call a tool like getRange, DO NOT repeat the data in your text response. The tool result will be displayed as a visual table automatically. Just say something brief like "Here's the data you requested" or ask if they need help with it.`,
         messages,
         tools: {
             // Read range of cells
